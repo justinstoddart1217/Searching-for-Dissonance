@@ -1,0 +1,151 @@
+# =============================================================================
+# Pre-registered Specifications for L1 Reaction Function Estimation
+# =============================================================================
+#
+# This file is the canonical source of country-by-country specifications for
+# the Level 1 reaction function. Changes to this file should be timestamped
+# and accompanied by a justification entry in the research diary.
+#
+# Schema:
+#   country:
+#     iso_code:        ISO-3 code
+#     panel:           "DM" | "EM"
+#     spec_type:       "CGG_DM" | "AM_MK_EM" | "TAYLOR_BASIC"
+#     pi_star:         inflation target (annual %, or per-period series ID)
+#     r_star:          neutral real rate prior (annual %); None → estimated
+#     inflation_horizon:  h in E_t π_{t+h} (quarters; convert as appropriate)
+#     output_gap_horizon: k in E_t ỹ_{t+k}
+#     smoothing:       True → include ρ·i_{t-1}
+#     include_fx:      True → include γ·Δq_t (REER)
+#     include_foreign_rate: True → include δ·i^foreign_t
+#     calibration_window:  [start, end] for θ̂_baseline (inclusive)
+#     test_window:         [start, end] for out-of-sample dissonance computation
+#     frequency:       "M" | "Q" — input data frequency
+#     reference_paper: canonical specification reference
+# =============================================================================
+
+global_defaults:
+  intensity_thresholds:
+    r_squared_min: 0.7
+    residual_ratio_max: 0.4
+    granger_p_max: 0.05
+  dissonance_thresholds:
+    k_sigma: 2.0
+    robustness_k_sigmas: [1.5, 2.0, 2.5]
+    robustness_percentiles: [0.90, 0.95, 0.99]
+  tvp:
+    # state innovation covariance prior multiplier; Q = q_multiplier * (σ²_ols · I_p)
+    q_multiplier: 0.001
+    # number of training observations used to initialise the Kalman filter
+    burn_in: 24
+
+countries:
+
+  # ---------------------------------------------------------------------------
+  # PILOT COUNTRY — South Africa (SARB)
+  # ---------------------------------------------------------------------------
+  ZAF:
+    name: "South Africa"
+    panel: EM
+    spec_type: AM_MK_EM
+    pi_star: 4.5           # midpoint of SARB 3–6% target band
+    r_star: 2.0            # SARB-published QPM neutral real, post-2017 vintage
+    inflation_horizon: 4   # quarters ahead (Aron-Muellbauer)
+    output_gap_horizon: 0
+    smoothing: true
+    include_fx: true
+    include_foreign_rate: true
+    foreign_rate_proxy: "USFFR"   # Fed funds rate
+    fx_measure: "REER_log_change" # Δlog(REER)
+    calibration_window: ["2005-01-01", "2014-12-31"]
+    test_window:        ["2015-01-01", "2024-12-31"]
+    frequency: "M"
+    reference_paper: "Aron-Muellbauer (2007)"
+    notes: >
+      Pilot country. SARB inflation target band 3–6%, midpoint 4.5%.
+      γ (FX) and δ (foreign rate) expected non-zero — fear-of-floating extension.
+
+  # ---------------------------------------------------------------------------
+  # EM panel
+  # ---------------------------------------------------------------------------
+  BRA:
+    name: "Brazil"
+    panel: EM
+    spec_type: AM_MK_EM
+    pi_star: 3.0                  # BCB target (post-2019); pre-2019 use time-varying series
+    pi_star_series: "BCB_TARGET"  # use stored time series instead of constant where available
+    r_star: 4.0
+    inflation_horizon: 4
+    output_gap_horizon: 0
+    smoothing: true
+    include_fx: true
+    include_foreign_rate: true
+    foreign_rate_proxy: "USFFR"
+    fx_measure: "REER_log_change"
+    calibration_window: ["2005-01-01", "2014-12-31"]
+    test_window:        ["2015-01-01", "2024-12-31"]
+    frequency: "M"
+    reference_paper: "Mohanty-Klau (2005); Minella et al. (2003)"
+    notes: >
+      Time-varying inflation target through 2019. Focus survey forecasts available
+      from BCB for forward-looking specification.
+
+  MEX:
+    name: "Mexico"
+    panel: EM
+    spec_type: AM_MK_EM
+    pi_star: 3.0
+    r_star: 2.5
+    inflation_horizon: 4
+    output_gap_horizon: 0
+    smoothing: true
+    include_fx: true
+    include_foreign_rate: true
+    foreign_rate_proxy: "USFFR"
+    fx_measure: "REER_log_change"
+    calibration_window: ["2005-01-01", "2014-12-31"]
+    test_window:        ["2015-01-01", "2024-12-31"]
+    frequency: "M"
+    reference_paper: "Mohanty-Klau (2005)"
+
+  # ... additional EM countries (IDN, IND, CHL, TUR) populated as data is loaded
+
+  # ---------------------------------------------------------------------------
+  # DM panel
+  # ---------------------------------------------------------------------------
+  USA:
+    name: "United States"
+    panel: DM
+    spec_type: CGG_DM
+    pi_star: 2.0
+    r_star: 0.5                   # post-GFC; pre-GFC vintage uses 2.0
+    inflation_horizon: 4
+    output_gap_horizon: 0
+    smoothing: true
+    include_fx: false
+    include_foreign_rate: false
+    calibration_window: ["2005-01-01", "2014-12-31"]
+    test_window:        ["2015-01-01", "2024-12-31"]
+    frequency: "M"
+    reference_paper: "Clarida-Galí-Gertler (1999, 2000)"
+    notes: >
+      ELB binds 2009-2015 and 2020-2022. Use Wu-Xia shadow rate as i_t alternative
+      during ELB sub-periods for robustness; document switch in data appendix.
+
+  EUR:
+    name: "Eurozone (ECB)"
+    panel: DM
+    spec_type: CGG_DM
+    pi_star: 2.0
+    r_star: 0.0
+    inflation_horizon: 4
+    output_gap_horizon: 0
+    smoothing: true
+    include_fx: false
+    include_foreign_rate: false
+    calibration_window: ["2005-01-01", "2014-12-31"]
+    test_window:        ["2015-01-01", "2024-12-31"]
+    frequency: "M"
+    reference_paper: "Clarida-Galí-Gertler (1999, 2000)"
+
+  # ... GBR, JPN, CAN, AUS, SWE populated similarly
