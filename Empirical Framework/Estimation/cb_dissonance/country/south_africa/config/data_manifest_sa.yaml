@@ -1,0 +1,117 @@
+# =============================================================================
+# Data manifest — South Africa (ZAF)
+# =============================================================================
+#
+# One entry per canonical column in src/data/schema.py. Documents the source,
+# suggested ticker (Bloomberg / SARB / FRED / BIS), source frequency, and
+# the transformation applied to produce the canonical column.
+#
+# Why this file exists: the thesis data appendix lives here, in
+# machine-readable form. Every data choice is auditable. Modifications get
+# git-versioned and timestamped.
+#
+# Bloomberg tickers are a starting point — verify against your terminal.
+
+country: ZAF
+panel: EM
+spec_type: AM_MK_EM
+start: "2005-01-31"
+end: "2024-12-31"
+frequency: M
+
+sources:
+
+  policy_rate:
+    canonical_column: policy_rate
+    description: "SARB repurchase rate, end-of-month"
+    bloomberg: "SARRRD Index"
+    sarb_code: "MMSD002A"
+    fred: null
+    source_frequency: D
+    transformation: align_to_monthly(method='last')
+    units: percent_annualised
+    release_lag_months: 0
+    notes: "Step function — only changes at MPC meetings."
+
+  inflation:
+    canonical_column: inflation
+    description: "Headline CPI YoY"
+    bloomberg: "SACPYOY Index"
+    statssa: "P0141 (M5)"
+    source_frequency: M
+    transformation: identity
+    units: percent_yoy
+    release_lag_months: 1
+    notes: "StatsSA releases mid-month for the previous month."
+
+  inflation_target:
+    canonical_column: pi_star
+    description: "SARB target — 3-6% range, point target 4.5%"
+    bloomberg: null
+    source_frequency: constant
+    transformation: identity
+    units: percent
+    constant_value: 4.5
+    notes: |
+      Target range 3-6% formal since 2000; point target 4.5% explicit from 2017.
+      For pre-2017, modelling as 4.5% midpoint is standard (Aron-Muellbauer).
+
+  output_gap:
+    canonical_column: output_gap
+    description: "Output gap from HP-filtered log real GDP"
+    bloomberg: "SAGDPYOY Index (level), SAGDP Index (real)"
+    statssa: "P0441 (real GDP, quarterly)"
+    source_frequency: Q
+    transformation: |
+      hp_filter_output_gap(log_real_gdp, lamb=1600) then align_to_monthly(method='ffill')
+    units: percent_of_potential
+    release_lag_months: 2
+    notes: |
+      HP filter has known endpoint bias. Document λ=1600 (standard quarterly).
+      Robustness: Hamilton (2018) regression alternative; SARB output-gap series.
+
+  inflation_exp_h4:
+    canonical_column: inflation_exp_h4
+    description: "BER Inflation Expectations Survey, 1-year-ahead average"
+    bloomberg: null
+    ber_source: "BER quarterly Inflation Expectations Survey, analysts horizon 1y"
+    source_frequency: Q
+    transformation: align_to_monthly(method='ffill')
+    units: percent_yoy
+    release_lag_months: 1
+    notes: |
+      Quarterly survey, forward-filled to monthly grid. Robustness:
+      Reuters Econometer 1y consensus (monthly, Bloomberg); BEI breakeven
+      from R-bond vs I-bond (daily, but contains inflation risk premium).
+
+  reer_log_change:
+    canonical_column: reer_log_change
+    description: "Monthly percent change in broad REER (100·Δlog)"
+    bloomberg: "SBZAREER Index (BIS broad REER, monthly)"
+    bis_source: "BIS REER broad index"
+    source_frequency: M
+    transformation: reer_log_change(reer_level, periods=1)  # returns pp (×100)
+    units: percent
+    release_lag_months: 1
+    notes: |
+      REER ↑ = currency strengthens. γ < 0 expected in reaction function.
+      Rescaled to pp so this regressor matches the scale of inflation_gap,
+      output_gap, foreign_rate, and i_lag1 — keeps Mahalanobis distance balanced.
+
+  foreign_rate:
+    canonical_column: foreign_rate
+    description: "Effective Federal Funds Rate, monthly average"
+    bloomberg: "FEDL01 Index"
+    fred: "FEDFUNDS"
+    source_frequency: D
+    transformation: align_to_monthly(method='mean')
+    units: percent_annualised
+    release_lag_months: 0
+    notes: "US monetary stance enters SARB reaction function (open-economy spec)."
+
+  commodity_index_log_change:
+    canonical_column: commodity_index_log_change
+    description: "Monthly log-change in commodity export basket index"
+    bloomberg: "CRY Index"
+    notes: "Used as GMM instrument (terms-of-trade shock); not in baseline regression."
+    optional: true
